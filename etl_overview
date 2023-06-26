@@ -1,0 +1,120 @@
+--1. create fact table structure
+create or replace table HACKERRANK.PLAYGROUND_DEV.fact_order_shannonwu
+(
+  ID INT IDENTITY(1,1) NOT NULL
+   ,ORDERID int not null 
+  ,NAME varchar
+  ,TRANSACTIONDATE DATETIME
+  ,TRANSACTIONTYPE varchar(10)
+  ,QUANTITY int
+  ,ACTUALCOST numeric
+  ,primary key (ID)
+  
+  ,product_id int  --foreign key link to dim_product
+  ,datekey int  --foreign key link to dimdate
+)
+;
+
+--2. join source data with the dim tables to get the foreign keys
+   --insert into the empty fact table to populate fact table
+insert into HACKERRANK.PLAYGROUND_DEV.fact_order_shannonwu
+(
+  ORDERID
+  ,NAME
+  ,TRANSACTIONDATE
+  ,TRANSACTIONTYPE
+  ,QUANTITY
+  ,ACTUALCOST
+  ,product_id
+  ,datekey
+)
+select t.*
+    ,p.id as product_id
+    ,dd.datekey
+from "HACKERRANK"."PLAYGROUND_DEV"."A7_PRESTG_PRODUCT_ORDER_TRANS_ZEHUIYUAN" t
+left outer join "HACKERRANK"."PLAYGROUND_DEV"."DIM_PRODUCT_ZEHUIYUAN" p
+on t.name = p.name --112771
+left outer join "HACKERRANK"."PLAYGROUND_DEV".DIMDATE_IRISZHANG dd
+on date(TRANSACTIONDATE) = dd.FULLDATEALTERNATEKEY;
+;
+--Notes:
+  --dim_product table primary key is the id field (we created by identity/autoincremental)
+  --dimdate table primary key is the datekey field (not the FULLDATEALTERNATEKEY field!)
+    --we prefer int field as surrogate key more than date field
+
+--3. review the data
+select top 1000 
+    *
+from HACKERRANK.PLAYGROUND_DEV.fact_order_shannonwu
+;
+
+
+----------------------------------------------------------------------------------------------
+-----incremental data load--------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+--source file: product_order_trans_07142022.csv
+--destination table: fact_order_shannonwu
+
+--raw dump into Snowflake prestg table
+  --here we create another prestg table to load the incremental data, but in reality, the incremental data will be loaded into the same order prestg table (the one we used for historical load), but with different load_id or load_timestamp
+
+--after the file load, review the data
+select top 1000 * 
+from HACKERRANK.PLAYGROUND_DEV.A10_PRESTG_PRODUCT_ORDER_TRANS_YITINGZHONG  --cnt: 28
+;
+
+--load the incremental data with the foreign key populated into a tmp table
+use schema HACKERRANK.PLAYGROUND_DEV; 
+create or replace local temp table tmp_fact_order as 
+select t.*
+    --add in the foreign keys
+    ,p.id as product_id
+    ,dd.datekey
+--same script as the first fact load, just swap the data table to the incremental set
+from "HACKERRANK"."PLAYGROUND_DEV"."PRESTG_PRODUCT_ORDER_TRANS_YITINGZHONG" t   
+left outer join "HACKERRANK"."PLAYGROUND_DEV"."DIM_PRODUCT_ZEHUIYUAN" p
+on t.name = p.name
+left outer join "HACKERRANK"."PLAYGROUND_DEV".DIMDATE_YANLINXIANG dd
+on date(TRANSACTIONDATE) = dd.FULLDATEALTERNATEKEY
+;
+
+--do some data quality checking here before load data to fact
+  --uniqueness on the keys
+  --if the count matches the incremental prestg 
+  --...etc.
+
+select count(*)
+from tmp_fact_order
+;
+select top 1000 * from tmp_fact_order
+where product_id is null or datekey is null
+;
+--...could add more DQ checks
+
+
+--if all check passed, insert the incremental data to the fact table
+insert into HACKERRANK.PLAYGROUND_DEV.fact_order_shannonwu  
+(
+  ORDERID
+  ,NAME
+  ,TRANSACTIONDATE
+  ,TRANSACTIONTYPE
+  ,QUANTITY
+  ,ACTUALCOST
+  ,product_id
+  ,datekey
+)
+select * from tmp_fact_order
+;
+-------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
+
+--review the data
+--all record counts
+select count(*) from HACKERRANK.PLAYGROUND_DEV.fact_order_shannonwu  
+;
+--incremental dataset
+select count(*) from HACKERRANK.PLAYGROUND_DEV.fact_order_shannonwu  
+where datekey = '20220714'
+;
