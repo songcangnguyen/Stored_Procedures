@@ -1,0 +1,35 @@
+BEACONFIRE.DEV_DBcreate or replace procedure hackerrank.playground_dev.sp_tbl_bkp_SONGNGUYEN (tbl_nm varchar, dt_interval int)
+returns varchar
+language sql
+as 
+declare
+    fut_date varchar;
+    cur_date varchar;
+    bkp_name varchar;
+    create_table varchar;
+    rs resultset;
+    message varchar;
+begin  
+    fut_date := replace(dateadd(day,dt_interval,current_date()),'-','');
+    cur_date := replace(current_date(),'-','');
+    bkp_name := CONCAT('DEL_',fut_date,'_BKP_',tbl_nm,'_SONGNGUYEN_',cur_date);
+    create_table := concat('CREATE OR REPLACE TABLE ',bkp_name,' AS SELECT * FROM ',tbl_nm,';');
+    execute immediate :create_table;
+    
+    
+    create or replace temp table hackerrank.playground_dev.tmp_tbl_1 as 
+    select * from table(result_scan(last_query_id()));
+    
+    
+    select "status" into :message from hackerrank.playground_dev.tmp_tbl_1;
+    insert into "HACKERRANK"."PLAYGROUND_DEV"."LOGGING_HIST_SONGNGUYEN"
+    select 'sp_tbl_bkp_songnguyen',*,sysdate() from hackerrank.playground_dev.tmp_tbl_1; 
+  
+    return :message;
+
+end;
+
+;
+--Test
+call hackerrank.playground_dev.sp_tbl_bkp_SONGNGUYEN('query_history',7) ;
+select * from hackerrank.playground_dev.logging_hist_SONGNGUYEN;
