@@ -1,0 +1,22 @@
+create or replace procedure hackerrank.playground_dev.sp_tbl_bkp_shannonwu (tbl_nm varchar, dt_interval int)
+returns varchar
+language sql
+as
+begin
+  return tbl_nm;
+end
+;
+
+call hackerrank.playground_dev.sp_tbl_bkp_shannonwu('original_table_name',7)
+;
+
+-- create a table in hackerrank.playground_dev env, with name DEL_(today’s date+ DT_INTERVAL)_BKP_TBL_NM_yoursnowflakeaccountname_today’s_date
+
+-- Example:
+-- Current date: 2022-07-26 
+
+-- Call hackerrank.playground_dev.sp_tbl_bkp_yourname(‘query_hist’, 7)
+
+-- Will create a backup table named:
+
+-- hackerrank.playground_dev.DEL_20220802_BKP_query_hist_yournm_20220726
